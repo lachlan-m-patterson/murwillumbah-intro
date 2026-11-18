@@ -9,18 +9,18 @@ const root = $('#experience');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 let paused = reduced.matches, stage = 0, transition = null, visible = true;
 const chapters = [
-  {kicker:'THE SETTING',title:'A town.<br>A river.<br><em>A whole valley.</em>',copy:'Just south of the Queensland border, the Tweed River winds through northern New South Wales to the sea.',next:'Enter the valley',view:'THE TWEED VALLEY',target:[-9,0,0],camera:[15,45,50]},
-  {kicker:'THE LANDSCAPE',title:'High ridges.<br><em>Low ground.</em>',copy:'The ranges of an ancient volcano cradle the Tweed Valley. Rivers thread through the hills and open onto a broad floodplain.',next:'Find the town',view:'FROM THE RANGES TO THE RIVER',target:[-8,0,2],camera:[9,27,32]},
+  {kicker:'THE SETTING',title:'A town.<br>A river.<br><em>A whole valley.</em>',copy:'Just south of the Queensland border, the Tweed River winds through northern New South Wales to the sea.',next:'Enter the valley',view:'THE TWEED VALLEY',target:[-12,0,24],camera:[24,85,95]},
+  {kicker:'THE LANDSCAPE',title:'High ridges.<br><em>Low ground.</em>',copy:'The ranges of an ancient volcano cradle the Tweed Valley. Rivers thread through the hills and open onto a broad floodplain.',next:'Find the town',view:'FROM THE RANGES TO THE RIVER',target:[-12,0,6],camera:[12,43,49]},
   {kicker:'THE PLACE',title:'One river.<br><em>Two sides.</em>',copy:'Murwillumbah sits beside the Tweed. Across the river lies South Murwillumbah—the focus of this 2022 flood story.',next:'',view:'SOUTH MURWILLUMBAH',target:[-1,0,4.9],camera:[6,10.5,17]}
 ];
 const {west:W,east:E,north:N,south:S,size:n} = terrain;
 const width = (E-W)*111.32*Math.cos(28.3*Math.PI/180), depth = (N-S)*111.32;
-const project = (lon,lat) => [(lon-(W+E)/2)*width/(E-W),((N+S)/2-lat)*depth/(N-S)];
+const project = (lon,lat) => [(lon-153.385)*width/(E-W),(-28.29-lat)*depth/(N-S)];
 let heights,renderer,scene,camera,controls,labels=[],rings=[],riverMaterials=[];
 function height(lon,lat){
  const fx=THREE.MathUtils.clamp((lon-W)/(E-W)*(n-1),0,n-1.001),fy=THREE.MathUtils.clamp((N-lat)/(N-S)*(n-1),0,n-1.001);
  const x=Math.floor(fx),y=Math.floor(fy),u=fx-x,v=fy-y;
- return Math.max(0,THREE.MathUtils.lerp(THREE.MathUtils.lerp(heights[y*n+x],heights[y*n+x+1],u),THREE.MathUtils.lerp(heights[(y+1)*n+x],heights[(y+1)*n+x+1],u),v))*.0032;
+ return Math.max(0,THREE.MathUtils.lerp(THREE.MathUtils.lerp(heights[y*n+x],heights[y*n+x+1],u),THREE.MathUtils.lerp(heights[(y+1)*n+x],heights[(y+1)*n+x+1],u),v))*.0016;
 }
 function point(lon,lat,offset=.06){const [x,z]=project(lon,lat);return new THREE.Vector3(x,height(lon,lat)+offset,z);}
 function addLabel(text,lon,lat,kind,stages,offset=.5){
@@ -40,8 +40,9 @@ function view(index,instant=false){
  document.querySelectorAll('.step').forEach((b,i)=>{b.classList.toggle('active',i===index);if(i===index)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
  if(!camera)return;
  const mobile=innerWidth<=700;
+ scene.fog.density=mobile&&index===0?.0018:.004;
  let dest=new THREE.Vector3(...c.camera),target=new THREE.Vector3(...c.target);
- if(mobile){dest=new THREE.Vector3(...[[20,65,66],[12,40,43],[7,19,23]][index]);target=new THREE.Vector3(...[[0,0,-14],[-2,0,-6],[1,0,1]][index]);}
+ if(mobile){dest=new THREE.Vector3(...[[8,190,180],[12,62,65],[7,19,23]][index]);target=new THREE.Vector3(...[[5,0,-44],[-4,0,-9],[1,0,1]][index]);}
  if(instant||reduced.matches){camera.position.copy(dest);controls.target.copy(target);transition=null;controls.update();}
  else transition={start:performance.now(),from:camera.position.clone(),to:dest,fromTarget:controls.target.clone(),toTarget:target};
 }
@@ -52,14 +53,15 @@ async function init(){
  renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
  renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(root.clientWidth,root.clientHeight);renderer.setClearColor(0x081c20,0);renderer.outputColorSpace=THREE.SRGBColorSpace;
  $('#scene').append(renderer.domElement);
- scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x0a2529,.008);
- camera=new THREE.PerspectiveCamera(39,root.clientWidth/root.clientHeight,.1,250);
+ scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x0a2529,.004);
+ camera=new THREE.PerspectiveCamera(39,root.clientWidth/root.clientHeight,.1,500);
  controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.07;controls.enableZoom=false;controls.enablePan=false;controls.minPolarAngle=.24;controls.maxPolarAngle=Math.PI*.43;controls.rotateSpeed=.45;controls.touches.ONE=THREE.TOUCH.ROTATE;controls.touches.TWO=THREE.TOUCH.DOLLY_ROTATE;
  controls.addEventListener('start',()=>{transition=null;$('#drag-hint').textContent='Explore freely · ↺ to reset';});
  scene.add(new THREE.HemisphereLight(0xd9e9d5,0x142c2e,2.5));
  const sun=new THREE.DirectionalLight(0xffedc9,3.4);sun.position.set(-30,25,-15);scene.add(sun);
  const fill=new THREE.DirectionalLight(0x6eb8ba,1.3);fill.position.set(30,10,20);scene.add(fill);
  const geo=new THREE.PlaneGeometry(width,depth,n-1,n-1);geo.rotateX(-Math.PI/2);
+ const [centerX,centerZ]=project((W+E)/2,(N+S)/2);geo.translate(centerX,0,centerZ);
  const pos=geo.attributes.position,colors=new Float32Array(n*n*3),base=new THREE.Color(),low=new THREE.Color('#58776b'),high=new THREE.Color('#acb59a'),sea=new THREE.Color('#123f46');
  // Mask the sea from mapped coastal geometry, rather than treating all low land as water.
  const coast=waterways.filter(f=>f.kind==='coast'&&JSON.stringify(f.points[0])!==JSON.stringify(f.points.at(-1)));
@@ -75,7 +77,7 @@ async function init(){
    return E;
  });
  for(let i=0;i<n*n;i++){
-   const h=heights[i],ocean=W+(i%n)/(n-1)*(E-W)>shore[Math.floor(i/n)];pos.setY(i,ocean?0:Math.max(h,0)*.0032);
+   const h=heights[i],ocean=W+(i%n)/(n-1)*(E-W)>shore[Math.floor(i/n)];pos.setY(i,ocean?0:Math.max(h,0)*.0016);
    if(ocean)base.copy(sea);else base.copy(low).lerp(high,Math.min(Math.max(h,0)/1100,1));
    colors[i*3]=base.r;colors[i*3+1]=base.g;colors[i*3+2]=base.b;
  }
@@ -86,7 +88,7 @@ async function init(){
    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvElevation = position.y;');
    shader.fragmentShader='varying float vElevation;\n'+shader.fragmentShader;
    shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
-    float level = vElevation / 0.16;
+    float level = vElevation / 0.08;
     float edge = abs(fract(level - 0.5) - 0.5) / max(fwidth(level), 0.001);
     float contour = 1.0 - smoothstep(0.0, 1.0, edge);
     diffuseColor.rgb *= 1.0 - contour * 0.17 * smoothstep(0.06, 0.2, vElevation);`);
@@ -115,7 +117,8 @@ async function init(){
  addLabel('South Murwillumbah',153.408,-28.339,'south',[2],.7);
  addLabel('WOLLUMBIN<span class="sub">MOUNT WARNING</span>',153.271,-28.398,'mountain',[0,1],.7);
  addLabel('Tweed Heads',153.538,-28.175,'',[0],.4);
- addLabel('Pacific Ocean',153.61,-28.29,'water',[0],.1);
+ addLabel('Gold Coast',153.43,-28.002,'',[0],.4);
+ addLabel('Byron Bay',153.615,-28.643,'',[0],.4);
  addLabel('Tweed River',153.456,-28.286,'water',[0,1,2],.25);
  addLabel('Rous River',153.423,-28.272,'water',[1],.3);
  addLabel('BORDER RANGES',153.18,-28.28,'mountain',[1],.8);

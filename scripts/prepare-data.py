@@ -1,4 +1,4 @@
-"""Download public elevation and OSM waterways; bake a small local data bundle."""
+"""Download public elevation; bake a small local data bundle."""
 import io, json, math, pathlib, concurrent.futures
 import requests
 import numpy as np
@@ -7,7 +7,7 @@ from PIL import Image
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = ROOT / 'assets'
 OUT.mkdir(exist_ok=True)
-W,E,S,N = 153.12,153.65,-28.52,-28.06
+W,E,S,N = 152.90,153.72,-28.72,-27.94
 Z=11
 def tile(lon,lat):
     return (lon+180)/360*2**Z, (1-math.asinh(math.tan(math.radians(lat)))/math.pi)/2*2**Z
@@ -22,7 +22,7 @@ def fetch(pair):
 with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
     for x,y,a in pool.map(fetch,[(x,y) for y in range(iy,math.floor(y1)+1) for x in range(ix,math.floor(x1)+1)]):
         mosaic[(y-iy)*256:(y-iy+1)*256,(x-ix)*256:(x-ix+1)*256]=a
-size=513
+size=769
 # Sample at evenly spaced latitudes, matching the geographic renderer.
 lons=np.linspace(W,E,size);lats=np.linspace(N,S,size)
 xx=((lons+180)/360*2**Z-ix)*256
