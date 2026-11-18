@@ -129,8 +129,12 @@ async function init(){
   controls.update();
   for(const ring of rings){const pulse=paused?1:1+Math.sin(t*.0015)*.16;ring.scale.setScalar(pulse);ring.visible=!ring.userData.south||stage===2;}
   for(const m of riverMaterials)m.opacity=paused?.8:.77+Math.sin(t*.0009)*.1;
+  const occupied=[];
   for(const label of labels){const p=label.pos.clone().project(camera);const x=(p.x*.5+.5)*root.clientWidth,y=(-p.y*.5+.5)*root.clientHeight;
-   const show=label.stages.includes(stage)&&p.z<1&&p.z>-1&&x>10&&x<root.clientWidth-10&&y>65&&y<root.clientHeight-100;
+   const rect={left:x-label.el.offsetWidth/2-5,right:x+label.el.offsetWidth/2+5,top:y-label.el.offsetHeight-5,bottom:y+5};
+   const collides=occupied.some(r=>rect.left<r.right&&rect.right>r.left&&rect.top<r.bottom&&rect.bottom>r.top);
+   const show=label.stages.includes(stage)&&!collides&&p.z<1&&p.z>-1&&rect.left>8&&rect.right<root.clientWidth-8&&y>65&&y<root.clientHeight-100;
+   if(show)occupied.push(rect);
    label.el.style.opacity=show?1:0;label.el.style.left=x+'px';label.el.style.top=y+'px';
   }
   $('#compass').style.transform=`rotate(${-controls.getAzimuthalAngle()}rad)`;
