@@ -19,7 +19,7 @@ Paste the live URL into an ArcGIS StoryMaps embed block. Choose the wide/full-wi
 
 ## Development
 
-Node 22+ recommended. `npm ci`, then `npm run dev`. `npm run build` writes `dist/` with relative paths. GitHub Pages serves the checked-in `docs/` folder on `main`. After changing source, build and copy the exact build into `docs/` before committing and pushing. No API keys or backend required. Google Fonts are optional cosmetic network requests; system fallbacks are provided.
+Node 22+ recommended. `npm ci`, then `npm run dev`. `npm run build` writes `dist/` with relative paths. GitHub Pages serves the checked-in `docs/` folder on `main`. After changing source, build and copy the exact build into `docs/` before committing and pushing. No API keys or backend required. The opening follows the [Tweed Valley atlas style guide](./tweed-valley-style-guide.md) and uses system Arial and Georgia fonts.
 
 ## Data and interpretation
 

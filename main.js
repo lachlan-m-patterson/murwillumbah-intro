@@ -6,12 +6,17 @@ import waterURL from './assets/waterways.json?url';
 
 const $ = s => document.querySelector(s);
 const root = $('#experience');
+const frame = $('.map-frame');
+const atlas = {
+  estuary: 0x102628, leaf: 0xc2dbb5, sage: 0xa5b198, limestone: 0xece9df,
+  lowland: 0x58776b, sea: 0x123f46, river: 0x87bec0, tributary: 0x397b80
+};
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 let paused = reduced.matches, stage = 0, transition = null, visible = true;
 const chapters = [
-  {kicker:'THE SETTING',title:'A town.<br>A river.<br><em>A whole valley.</em>',copy:'Just south of the Queensland border, the Tweed River winds through northern New South Wales to the sea.',next:'Enter the valley',view:'THE TWEED VALLEY',target:[-12,0,24],camera:[24,85,95]},
-  {kicker:'THE LANDSCAPE',title:'High ridges.<br><em>Low ground.</em>',copy:'The ranges of an ancient volcano cradle the Tweed Valley. Rivers thread through the hills and open onto a broad floodplain.',next:'Find the town',view:'FROM THE RANGES TO THE RIVER',target:[-12,0,6],camera:[12,43,49]},
-  {kicker:'THE PLACE',title:'One river.<br><em>Two sides.</em>',copy:'Murwillumbah sits beside the Tweed. Across the river lies South Murwillumbah—the focus of this 2022 flood story.',next:'',view:'SOUTH MURWILLUMBAH',target:[-1,0,4.9],camera:[6,10.5,17]}
+  {kicker:'THE SETTING',title:'A town. <br>A river. <br><em>A whole valley.</em>',copy:'Just south of the Queensland border, the Tweed River winds through northern New South Wales to the sea.',next:'Enter the valley',view:'THE TWEED VALLEY',target:[-12,0,24],camera:[24,85,95]},
+  {kicker:'THE LANDSCAPE',title:'High ridges. <br><em>Low ground.</em>',copy:'The ranges of an ancient volcano cradle the Tweed Valley. Rivers thread through the hills and open onto a broad floodplain.',next:'Find the town',view:'FROM THE RANGES TO THE RIVER',target:[-12,0,6],camera:[12,43,49]},
+  {kicker:'THE PLACE',title:'One river. <br><em>Two sides.</em>',copy:'Murwillumbah sits beside the Tweed. Across the river lies South Murwillumbah—the focus of this 2022 flood story.',next:'',view:'SOUTH MURWILLUMBAH',target:[-1,0,4.9],camera:[6,10.5,17]}
 ];
 const {west:W,east:E,north:N,south:S,size:n} = terrain;
 const width = (E-W)*111.32*Math.cos(28.3*Math.PI/180), depth = (N-S)*111.32;
@@ -42,7 +47,7 @@ function view(index,instant=false){
  const mobile=innerWidth<=700;
  scene.fog.density=mobile&&index===0?.0018:.004;
  let dest=new THREE.Vector3(...c.camera),target=new THREE.Vector3(...c.target);
- if(mobile){dest=new THREE.Vector3(...[[8,190,180],[12,62,65],[7,19,23]][index]);target=new THREE.Vector3(...[[5,0,-44],[-4,0,-9],[1,0,1]][index]);}
+ if(mobile){dest=new THREE.Vector3(...[[12,80,80],[12,43,49],[6,12,18]][index]);target=new THREE.Vector3(...[[0,0,4],[0,0,5],[1,0,5]][index]);}
  if(instant||reduced.matches){camera.position.copy(dest);controls.target.copy(target);transition=null;controls.update();}
  else transition={start:performance.now(),from:camera.position.clone(),to:dest,fromTarget:controls.target.clone(),toTarget:target};
 }
@@ -51,10 +56,10 @@ async function init(){
  if(!heightRes.ok||!waterRes.ok)throw new Error('Map data could not be loaded');
  heights=new Int16Array(await heightRes.arrayBuffer());const waterways=await waterRes.json();
  renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
- renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(root.clientWidth,root.clientHeight);renderer.setClearColor(0x081c20,0);renderer.outputColorSpace=THREE.SRGBColorSpace;
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(frame.clientWidth,frame.clientHeight);renderer.setClearColor(atlas.estuary,0);renderer.outputColorSpace=THREE.SRGBColorSpace;
  $('#scene').append(renderer.domElement);
- scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x0a2529,.004);
- camera=new THREE.PerspectiveCamera(39,root.clientWidth/root.clientHeight,.1,500);
+ scene=new THREE.Scene();scene.fog=new THREE.FogExp2(atlas.estuary,.004);
+ camera=new THREE.PerspectiveCamera(39,frame.clientWidth/frame.clientHeight,.1,500);
  controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.07;controls.enableZoom=false;controls.enablePan=false;controls.minPolarAngle=.24;controls.maxPolarAngle=Math.PI*.43;controls.rotateSpeed=.45;controls.touches.ONE=THREE.TOUCH.ROTATE;controls.touches.TWO=THREE.TOUCH.DOLLY_ROTATE;
  controls.addEventListener('start',()=>{transition=null;$('#drag-hint').textContent='Explore freely · ↺ to reset';});
  scene.add(new THREE.HemisphereLight(0xd9e9d5,0x142c2e,2.5));
@@ -62,7 +67,7 @@ async function init(){
  const fill=new THREE.DirectionalLight(0x6eb8ba,1.3);fill.position.set(30,10,20);scene.add(fill);
  const geo=new THREE.PlaneGeometry(width,depth,n-1,n-1);geo.rotateX(-Math.PI/2);
  const [centerX,centerZ]=project((W+E)/2,(N+S)/2);geo.translate(centerX,0,centerZ);
- const pos=geo.attributes.position,colors=new Float32Array(n*n*3),base=new THREE.Color(),low=new THREE.Color('#58776b'),high=new THREE.Color('#acb59a'),sea=new THREE.Color('#123f46');
+ const pos=geo.attributes.position,colors=new Float32Array(n*n*3),base=new THREE.Color(),low=new THREE.Color(atlas.lowland),high=new THREE.Color(atlas.sage),sea=new THREE.Color(atlas.sea);
  // Mask the sea from mapped coastal geometry, rather than treating all low land as water.
  const coast=waterways.filter(f=>f.kind==='coast'&&JSON.stringify(f.points[0])!==JSON.stringify(f.points.at(-1)));
  const shore=Array.from({length:n},(_,row)=>{
@@ -104,22 +109,23 @@ async function init(){
   for(const [lon,lat] of feature.points){if(lon>=W&&lon<=E&&lat>=S&&lat<=N)section.push(point(lon,lat,feature.kind==='coast'?.025:.055));else if(section.length){sections.push(section);section=[];}}if(section.length)sections.push(section);
   for(const pts of sections){if(pts.length<2)continue;
    const primary=feature.name.toLowerCase()==='tweed river';
-   const material=new THREE.LineBasicMaterial({color:feature.kind==='coast'?0x6b9e94:primary?0xc0f6e5:0x7ecbc4,transparent:true,opacity:feature.kind==='coast'?.45:primary?.95:.5});
+   const material=new THREE.LineBasicMaterial({color:feature.kind==='coast'?0x6b9e94:primary?atlas.river:atlas.tributary,transparent:true,opacity:feature.kind==='coast'?.45:primary?.95:.5});
    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),material));
    if(primary){
     const curve=new THREE.CurvePath();for(let i=1;i<pts.length;i++)curve.add(new THREE.LineCurve3(pts[i-1],pts[i]));
-    const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.min(pts.length*2,1800),.032,5,false),new THREE.MeshBasicMaterial({color:0xabe8db,transparent:true,opacity:.8}));scene.add(tube);riverMaterials.push(tube.material);
+    const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.min(pts.length*2,1800),.032,5,false),new THREE.MeshBasicMaterial({color:atlas.river,transparent:true,opacity:.8}));scene.add(tube);riverMaterials.push(tube.material);
    }
   }
  }
- marker(153.397,-28.326,0xd5eac0,.42);const southRing=marker(153.403,-28.335,0xf1bf7f,.45);southRing.userData.south=true;
+ marker(153.397,-28.326,atlas.leaf,.42);const southRing=marker(153.403,-28.335,atlas.limestone,.45);southRing.userData.south=true;
  addLabel('Murwillumbah',153.393,-28.325,'town',[0,1,2],.8);
  addLabel('South Murwillumbah',153.408,-28.339,'south',[2],.7);
+ addLabel('Tweed River',153.456,-28.286,'water',[0,1,2],.25);
  addLabel('WOLLUMBIN<span class="sub">MOUNT WARNING</span>',153.271,-28.398,'mountain',[0,1],.7);
  addLabel('Tweed Heads',153.538,-28.175,'',[0],.4);
  addLabel('Gold Coast',153.43,-28.002,'',[0],.4);
  addLabel('Byron Bay',153.615,-28.643,'',[0],.4);
- addLabel('Tweed River',153.456,-28.286,'water',[0,1,2],.25);
+
  addLabel('Rous River',153.423,-28.272,'water',[1],.3);
  addLabel('BORDER RANGES',153.18,-28.28,'mountain',[1],.8);
  addLabel('QUEENSLAND',153.40,-28.12,'mountain',[0],.4);
@@ -133,10 +139,17 @@ async function init(){
   for(const ring of rings){const pulse=paused?1:1+Math.sin(t*.0015)*.16;ring.scale.setScalar(pulse);ring.visible=!ring.userData.south||stage===2;}
   for(const m of riverMaterials)m.opacity=paused?.8:.77+Math.sin(t*.0009)*.1;
   const occupied=[];
-  for(const label of labels){const p=label.pos.clone().project(camera);const x=(p.x*.5+.5)*root.clientWidth,y=(-p.y*.5+.5)*root.clientHeight;
+  for(const label of labels){const p=label.pos.clone().project(camera);let x=(p.x*.5+.5)*frame.clientWidth;
+   let y=(-p.y*.5+.5)*frame.clientHeight;
+   // Keep the main river caption below its anchor and the town caption above its marker.
+   if(label.kind==='town')x-=label.el.offsetWidth/2;
+   if(label.el.textContent==='Tweed River'){
+    x+=label.el.offsetWidth/2;
+    y+=label.el.offsetHeight+12;
+   }
    const rect={left:x-label.el.offsetWidth/2-5,right:x+label.el.offsetWidth/2+5,top:y-label.el.offsetHeight-5,bottom:y+5};
    const collides=occupied.some(r=>rect.left<r.right&&rect.right>r.left&&rect.top<r.bottom&&rect.bottom>r.top);
-   const show=label.stages.includes(stage)&&!collides&&p.z<1&&p.z>-1&&rect.left>8&&rect.right<root.clientWidth-8&&y>65&&y<root.clientHeight-100;
+   const show=label.stages.includes(stage)&&!collides&&p.z<1&&p.z>-1&&rect.left>8&&rect.right<frame.clientWidth-8&&rect.top>4&&rect.bottom<frame.clientHeight-4;
    if(show)occupied.push(rect);
    label.el.style.opacity=show?1:0;label.el.style.left=x+'px';label.el.style.top=y+'px';
   }
@@ -144,7 +157,7 @@ async function init(){
   renderer.render(scene,camera);
  }
  requestAnimationFrame(animate);
- new ResizeObserver(()=>{camera.aspect=root.clientWidth/root.clientHeight;camera.updateProjectionMatrix();renderer.setSize(root.clientWidth,root.clientHeight);view(stage,true);}).observe(root);
+ new ResizeObserver(()=>{camera.aspect=frame.clientWidth/frame.clientHeight;camera.updateProjectionMatrix();renderer.setSize(frame.clientWidth,frame.clientHeight);view(stage,true);}).observe(frame);
  new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;},{threshold:0}).observe(root);
  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();showError('The 3D view was interrupted. Reload to return to the valley.');});
 }
