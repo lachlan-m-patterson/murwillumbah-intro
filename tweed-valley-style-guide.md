@@ -11,7 +11,7 @@ Use this guide when restyling a map in the Murwillumbah flood story. The reader 
 | Map surround | Pale eucalyptus #E9EDE4 | Empty space around 3D terrain and the background for map tools. |
 | Heading and body | Ink #102B29, slate #405454 | Near-black headings, grey serif prose on white. Match the existing StoryMap fonts first. |
 | Actions | Forest #285843 | White text on the primary action. Give the selected control a check or underline. |
-| Opening scene | Deep estuary #102628, pale leaf #C2DBB5 | Dark surround and a single pale action for the valley introduction. |
+| Opening scene | Pale eucalyptus #E9EDE4, forest #285843 | White narrative panel beside shaded relief, with a forest-green action. |
 | Land and buildings | Sage #A5B198, limestone #ECE9DF | Muted relief, matte roofs and soft shadows. Retain natural imagery where it helps identify a site. |
 | Permanent river | River teal #397B80 | Trace the main channel through the valley and town. Use a lighter teal #87BEC0 on dark terrain. |
 | Flood depth | #DCEFEA → #A6D5CD → #65ADA9 → #277A80 → #124C59 | Light to dark with increasing depth. Use the source breaks or continuous scale, units in metres and the same range in comparable views. The five stops are colours, not proposed thresholds. |
@@ -30,7 +30,7 @@ On the opening terrain, let the coastline, valley relief and highlighted town ca
 
 | Scene | Opening view and reader action |
 |---|---|
-| Valley introduction · Three.js | Keep the dark relief, strong silhouette and coast → valley → town sequence. Highlight Murwillumbah. Use “Enter the valley” to move closer while keeping the lower Tweed in frame. |
+| Valley introduction · Three.js | Use sage shaded relief on the pale surround and retain the coast → valley → town sequence. Highlight Murwillumbah. Use “Enter the valley” to move closer while keeping the lower Tweed in frame. |
 | South Murwillumbah · Three.js | Use the pale surround, natural aerial texture and a bridge as a common landmark. Offer one guided flyover. Selecting the bridge, levee or a street locates and describes it. Group optional zoning and surface settings under Layers. |
 | Rain on the rim · ArcGIS Online | Use subdued hillshade, fine tributaries and a slightly heavier main channel. Reveal subcatchments, gauge totals and downstream confluences in the order the prose explains them. Include the rainfall accumulation period alongside mm. |
 | 2022 flood · Three.js | Keep the pale buildings, gauge history and one large level reading. Link time selection to the chart and scene. Label the dated sequence “2022 flood reconstruction”. Show gauge level and its verified datum separately from local depth above ground. Mark interpolated timing or modelled values beside the readout. |

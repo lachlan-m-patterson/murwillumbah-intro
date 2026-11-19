@@ -8,15 +8,15 @@ const $ = s => document.querySelector(s);
 const root = $('#experience');
 const frame = $('.map-frame');
 const atlas = {
-  estuary: 0x102628, leaf: 0xc2dbb5, sage: 0xa5b198, limestone: 0xece9df,
-  lowland: 0x58776b, sea: 0x123f46, river: 0x87bec0, tributary: 0x397b80
+  surround: 0xe9ede4, marker: 0x9c512d, sage: 0xa5b198,
+  lowland: 0x849674, sea: 0x679ca0, river: 0x286c72, tributary: 0x397b80
 };
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 let paused = reduced.matches, stage = 0, transition = null, visible = true;
 const chapters = [
-  {kicker:'THE SETTING',title:'A town. <br>A river. <br><em>A whole valley.</em>',copy:'Just south of the Queensland border, the Tweed River winds through northern New South Wales to the sea.',next:'Enter the valley',view:'THE TWEED VALLEY',target:[-12,0,24],camera:[24,85,95]},
-  {kicker:'THE LANDSCAPE',title:'High ridges. <br><em>Low ground.</em>',copy:'The ranges of an ancient volcano cradle the Tweed Valley. Rivers thread through the hills and open onto a broad floodplain.',next:'Find the town',view:'FROM THE RANGES TO THE RIVER',target:[-12,0,6],camera:[12,43,49]},
-  {kicker:'THE PLACE',title:'One river. <br><em>Two sides.</em>',copy:'Murwillumbah sits beside the Tweed. Across the river lies South Murwillumbah—the focus of this 2022 flood story.',next:'',view:'SOUTH MURWILLUMBAH',target:[-1,0,4.9],camera:[6,10.5,17]}
+  {title:'The Tweed coast',copy:'Just south of the Queensland border, the Tweed River winds through northern New South Wales to the sea.',next:'Enter the valley',target:[0,0,3],camera:[18,64,72]},
+  {title:'The Tweed Valley',copy:'The ranges of an ancient volcano cradle the Tweed Valley. Rivers thread through the hills and open onto a broad floodplain.',next:'Find the town',target:[-12,0,6],camera:[12,43,49]},
+  {title:'Murwillumbah',copy:'Murwillumbah sits beside the Tweed. Across the river lies South Murwillumbah—the focus of this 2022 flood story.',next:'',target:[-1,0,4.9],camera:[6,10.5,17]}
 ];
 const {west:W,east:E,north:N,south:S,size:n} = terrain;
 const width = (E-W)*111.32*Math.cos(28.3*Math.PI/180), depth = (N-S)*111.32;
@@ -40,8 +40,11 @@ function marker(lon,lat,color,radius){
 function view(index,instant=false){
  stage=index;
  const c=chapters[index];
- $('#chapter').textContent=`0${index+1}`;$('#kicker').textContent=c.kicker;$('#title').innerHTML=c.title;$('#description').textContent=c.copy;$('#view-name').textContent=c.view;
- $('#next').hidden=index===2;$('#next').innerHTML=`${c.next} <span>↗</span>`;$('.story-end').hidden=index!==2;
+ $('#title').textContent=c.title;
+ $('#description').textContent=c.copy;
+ $('#next').hidden=index===2;
+ $('#next').textContent=c.next;
+ $('.story-end').hidden=index!==2;
  document.querySelectorAll('.step').forEach((b,i)=>{b.classList.toggle('active',i===index);if(i===index)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
  if(!camera)return;
  const mobile=innerWidth<=700;
@@ -56,15 +59,15 @@ async function init(){
  if(!heightRes.ok||!waterRes.ok)throw new Error('Map data could not be loaded');
  heights=new Int16Array(await heightRes.arrayBuffer());const waterways=await waterRes.json();
  renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
- renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(frame.clientWidth,frame.clientHeight);renderer.setClearColor(atlas.estuary,0);renderer.outputColorSpace=THREE.SRGBColorSpace;
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(frame.clientWidth,frame.clientHeight);renderer.setClearColor(atlas.surround,0);renderer.outputColorSpace=THREE.SRGBColorSpace;
  $('#scene').append(renderer.domElement);
- scene=new THREE.Scene();scene.fog=new THREE.FogExp2(atlas.estuary,.004);
+ scene=new THREE.Scene();scene.fog=new THREE.FogExp2(atlas.surround,.004);
  camera=new THREE.PerspectiveCamera(39,frame.clientWidth/frame.clientHeight,.1,500);
  controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.07;controls.enableZoom=false;controls.enablePan=false;controls.minPolarAngle=.24;controls.maxPolarAngle=Math.PI*.43;controls.rotateSpeed=.45;controls.touches.ONE=THREE.TOUCH.ROTATE;controls.touches.TWO=THREE.TOUCH.DOLLY_ROTATE;
- controls.addEventListener('start',()=>{transition=null;$('#drag-hint').textContent='Explore freely · ↺ to reset';});
+ controls.addEventListener('start',()=>{transition=null;$('#drag-hint').textContent='Drag to orbit';});
  scene.add(new THREE.HemisphereLight(0xd9e9d5,0x142c2e,2.5));
- const sun=new THREE.DirectionalLight(0xffedc9,3.4);sun.position.set(-30,25,-15);scene.add(sun);
- const fill=new THREE.DirectionalLight(0x6eb8ba,1.3);fill.position.set(30,10,20);scene.add(fill);
+ const sun=new THREE.DirectionalLight(0xfff4df,2.6);sun.position.set(-30,25,-15);scene.add(sun);
+ const fill=new THREE.DirectionalLight(0xe5ede6,.6);fill.position.set(30,10,20);scene.add(fill);
  const geo=new THREE.PlaneGeometry(width,depth,n-1,n-1);geo.rotateX(-Math.PI/2);
  const [centerX,centerZ]=project((W+E)/2,(N+S)/2);geo.translate(centerX,0,centerZ);
  const pos=geo.attributes.position,colors=new Float32Array(n*n*3),base=new THREE.Color(),low=new THREE.Color(atlas.lowland),high=new THREE.Color(atlas.sage),sea=new THREE.Color(atlas.sea);
@@ -102,7 +105,7 @@ async function init(){
  // Vertical cut edges turn the terrain into a floating cartographic relief.
  const perimeter=[];for(let x=0;x<n;x++)perimeter.push(x);for(let y=1;y<n;y++)perimeter.push(y*n+n-1);for(let x=n-2;x>=0;x--)perimeter.push((n-1)*n+x);for(let y=n-2;y>=0;y--)perimeter.push(y*n);
  const sideVertices=[];for(let j=0;j<perimeter.length-1;j++){let a=perimeter[j],b=perimeter[j+1];let ax=pos.getX(a),az=pos.getZ(a),ay=pos.getY(a),bx=pos.getX(b),bz=pos.getZ(b),by=pos.getY(b);sideVertices.push(ax,ay,az,ax,-1.1,az,bx,by,bz,bx,by,bz,ax,-1.1,az,bx,-1.1,bz);}
- const sideGeo=new THREE.BufferGeometry();sideGeo.setAttribute('position',new THREE.Float32BufferAttribute(sideVertices,3));sideGeo.computeVertexNormals();scene.add(new THREE.Mesh(sideGeo,new THREE.MeshStandardMaterial({color:0x203b36,side:THREE.DoubleSide,roughness:1})));
+ const sideGeo=new THREE.BufferGeometry();sideGeo.setAttribute('position',new THREE.Float32BufferAttribute(sideVertices,3));sideGeo.computeVertexNormals();scene.add(new THREE.Mesh(sideGeo,new THREE.MeshStandardMaterial({color:0x807962,side:THREE.DoubleSide,roughness:1})));
  // Official NSW watercourse linework, draped on the DEM; no flood surface.
  for(const feature of waterways){
   let sections=[],section=[];
@@ -113,21 +116,21 @@ async function init(){
    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),material));
    if(primary){
     const curve=new THREE.CurvePath();for(let i=1;i<pts.length;i++)curve.add(new THREE.LineCurve3(pts[i-1],pts[i]));
-    const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.min(pts.length*2,1800),.032,5,false),new THREE.MeshBasicMaterial({color:atlas.river,transparent:true,opacity:.8}));scene.add(tube);riverMaterials.push(tube.material);
+    const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.min(pts.length*2,1800),.055,5,false),new THREE.MeshBasicMaterial({color:atlas.river,transparent:true,opacity:.8}));scene.add(tube);riverMaterials.push(tube.material);
    }
   }
  }
- marker(153.397,-28.326,atlas.leaf,.42);const southRing=marker(153.403,-28.335,atlas.limestone,.45);southRing.userData.south=true;
+ marker(153.397,-28.326,atlas.marker,.42);const southRing=marker(153.403,-28.335,atlas.marker,.45);southRing.userData.south=true;
  addLabel('Murwillumbah',153.393,-28.325,'town',[0,1,2],.8);
  addLabel('South Murwillumbah',153.408,-28.339,'south',[2],.7);
  addLabel('Tweed River',153.456,-28.286,'water',[0,1,2],.25);
- addLabel('WOLLUMBIN<span class="sub">MOUNT WARNING</span>',153.271,-28.398,'mountain',[0,1],.7);
+ addLabel('Wollumbin<span class="sub">Mount Warning</span>',153.271,-28.398,'mountain',[0,1],.7);
  addLabel('Tweed Heads',153.538,-28.175,'',[0],.4);
  addLabel('Gold Coast',153.43,-28.002,'',[0],.4);
  addLabel('Byron Bay',153.615,-28.643,'',[0],.4);
 
  addLabel('Rous River',153.423,-28.272,'water',[1],.3);
- addLabel('BORDER RANGES',153.18,-28.28,'mountain',[1],.8);
+ addLabel('Border Ranges',153.18,-28.28,'mountain',[1],.8);
  addLabel('QUEENSLAND',153.40,-28.12,'mountain',[0],.4);
  addLabel('NEW SOUTH WALES',153.30,-28.22,'mountain',[0],.6);
  view(0,true);
@@ -149,7 +152,7 @@ async function init(){
    }
    const rect={left:x-label.el.offsetWidth/2-5,right:x+label.el.offsetWidth/2+5,top:y-label.el.offsetHeight-5,bottom:y+5};
    const collides=occupied.some(r=>rect.left<r.right&&rect.right>r.left&&rect.top<r.bottom&&rect.bottom>r.top);
-   const show=label.stages.includes(stage)&&!collides&&p.z<1&&p.z>-1&&rect.left>8&&rect.right<frame.clientWidth-8&&rect.top>4&&rect.bottom<frame.clientHeight-4;
+   const show=label.stages.includes(stage)&&!collides&&p.z<1&&p.z>-1&&rect.left>8&&rect.right<frame.clientWidth-8&&rect.top>58&&rect.bottom<frame.clientHeight-36;
    if(show)occupied.push(rect);
    label.el.style.opacity=show?1:0;label.el.style.left=x+'px';label.el.style.top=y+'px';
   }
@@ -165,12 +168,13 @@ function showError(message){const loader=$('#loading');if(loader)loader.remove()
 $('#next').onclick=()=>view(Math.min(stage+1,2));
 document.querySelectorAll('.step').forEach(b=>b.onclick=()=>view(Number(b.dataset.step)));
 $('.wordmark').onclick=e=>{e.preventDefault();view(0);};
-$('#reset').onclick=()=>{view(stage);$('#drag-hint').textContent='Drag to explore the landscape';};
-function updateMotion(){ $('#motion').textContent=paused?'▷':'Ⅱ';$('#motion').setAttribute('aria-label',paused?'Resume ambient motion':'Pause ambient motion');$('#motion').title=paused?'Resume ambient motion':'Pause ambient motion'; }
+$('#reset').onclick=()=>{view(stage);$('#drag-hint').textContent='Drag to orbit';};
+function updateMotion(){ $('#motion').textContent=paused?'Resume motion':'Pause motion';$('#motion').setAttribute('aria-label',paused?'Resume ambient motion':'Pause ambient motion');$('#motion').title=paused?'Resume ambient motion':'Pause ambient motion'; }
 $('#motion').onclick=()=>{paused=!paused;updateMotion();};updateMotion();
 reduced.addEventListener('change',()=>{paused=reduced.matches;updateMotion();if(reduced.matches)view(stage,true);});
 $('#about').onclick=()=>$('#info').showModal();$('.close').onclick=()=>$('#info').close();$('#info').addEventListener('click',e=>{if(e.target===$('#info')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
 $('#fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await root.requestFullscreen();}catch{$('#fullscreen').hidden=true;}};
 document.addEventListener('fullscreenchange',()=>$('#fullscreen').setAttribute('aria-label',document.fullscreenElement?'Exit fullscreen':'Enter fullscreen'));
 document.addEventListener('keydown',e=>{if($('#info').open||e.target.matches('button,a'))return;if(e.key==='ArrowRight'){e.preventDefault();view(Math.min(stage+1,2));}if(e.key==='ArrowLeft'){e.preventDefault();view(Math.max(stage-1,0));}});
+if (innerWidth<=700) $('.map-key').open=false;
 init().catch(e=>{console.error(e);showError('This device could not open the 3D map. You can still continue to the flood story below.');});
