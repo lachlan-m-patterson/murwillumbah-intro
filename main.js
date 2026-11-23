@@ -21,9 +21,10 @@ const chapters = [
 const {west:W,east:E,north:N,south:S,size:n} = terrain;
 const width = (E-W)*111.32*Math.cos(28.3*Math.PI/180), depth = (N-S)*111.32;
 const project = (lon,lat) => [(lon-153.385)*width/(E-W),(-28.29-lat)*depth/(N-S)];
-// Soft margin: terrain flattens and fades into the page colour over the outer 12% of each side.
-const EDGE=.12;
-const edgeFade=(u,v)=>THREE.MathUtils.smoothstep(Math.min(u,1-u,v,1-v),0,EDGE);
+// Soft circular margin: terrain flattens and fades into the page colour over the outer 24% of the
+// radius of the largest circle that fits inside the DEM (measured in km so it stays round, not elliptical).
+const EDGE=.24, RADIUS=Math.min(width,depth)/2;
+const edgeFade=(u,v)=>THREE.MathUtils.smoothstep(1-Math.hypot((u-.5)*width,(v-.5)*depth)/RADIUS,0,EDGE);
 const [X0,Z0]=project(W,N),[X1,Z1]=project(E,S);
 const fadeAt=(x,z)=>edgeFade((x-X0)/(X1-X0),(z-Z0)/(Z1-Z0));
 function edgeAlpha(geometry){const p=geometry.attributes.position,c=new Float32Array(p.count*4);for(let i=0;i<p.count;i++)c.set([1,1,1,fadeAt(p.getX(i),p.getZ(i))],i*4);geometry.setAttribute('color',new THREE.BufferAttribute(c,4));return geometry;}
