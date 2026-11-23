@@ -17,8 +17,6 @@ button:hover { background: #eff3ec; }
   height: 100svh; min-height: 420px; border: 1px solid var(--border); background: white;
 }
 .sidebar { padding: 22px; overflow: auto; border-right: 1px solid var(--border); }
-.wordmark { color: var(--forest); font-weight: bold; text-decoration: none; }
-.wordmark:hover { text-decoration: underline; }
 h1 { font-size: clamp(26px, 2.1vw, 32px); line-height: 1.12; margin: 8px 0 12px; }
 p { font: 17px/1.48 Georgia, serif; color: var(--slate); margin: 0 0 18px; }
 .next, .step[aria-current] { color: white; background: var(--forest); border-color: var(--forest); }

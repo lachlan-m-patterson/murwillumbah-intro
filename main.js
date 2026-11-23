@@ -14,18 +14,24 @@ const atlas = {
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 let paused = reduced.matches, stage = 0, transition = null, visible = true;
 const chapters = [
-  {title:'The Tweed coast',copy:'Just south of the Queensland border, the Tweed River winds through northern New South Wales to the sea.',next:'Enter the valley',target:[0,0,3],camera:[18,64,72]},
-  {title:'The Tweed Valley',copy:'The ranges of an ancient volcano cradle the Tweed Valley. Rivers thread through the hills and open onto a broad floodplain.',next:'Find the town',target:[-12,0,6],camera:[12,43,49]},
+  {title:'The Tweed coast',copy:'Just south of the Queensland border, the Tweed River winds through northern New South Wales to the sea.',next:'Next',target:[0,0,3],camera:[18,64,72]},
+  {title:'The Tweed Valley',copy:'The ranges of an ancient volcano cradle the Tweed Valley. Rivers thread through the hills and open onto a broad floodplain.',next:'Next',target:[-2.7,0,7.2],camera:[18.8,11,20.5]},
   {title:'Murwillumbah',copy:'Murwillumbah sits beside the Tweed. Across the river lies South Murwillumbah—the focus of this 2022 flood story.',next:'',target:[-1,0,4.9],camera:[6,10.5,17]}
 ];
 const {west:W,east:E,north:N,south:S,size:n} = terrain;
 const width = (E-W)*111.32*Math.cos(28.3*Math.PI/180), depth = (N-S)*111.32;
 const project = (lon,lat) => [(lon-153.385)*width/(E-W),(-28.29-lat)*depth/(N-S)];
+// Soft margin: terrain flattens and fades into the page colour over the outer 12% of each side.
+const EDGE=.12;
+const edgeFade=(u,v)=>THREE.MathUtils.smoothstep(Math.min(u,1-u,v,1-v),0,EDGE);
+const [X0,Z0]=project(W,N),[X1,Z1]=project(E,S);
+const fadeAt=(x,z)=>edgeFade((x-X0)/(X1-X0),(z-Z0)/(Z1-Z0));
+function edgeAlpha(geometry){const p=geometry.attributes.position,c=new Float32Array(p.count*4);for(let i=0;i<p.count;i++)c.set([1,1,1,fadeAt(p.getX(i),p.getZ(i))],i*4);geometry.setAttribute('color',new THREE.BufferAttribute(c,4));return geometry;}
 let heights,renderer,scene,camera,controls,labels=[],rings=[],riverMaterials=[];
 function height(lon,lat){
  const fx=THREE.MathUtils.clamp((lon-W)/(E-W)*(n-1),0,n-1.001),fy=THREE.MathUtils.clamp((N-lat)/(N-S)*(n-1),0,n-1.001);
  const x=Math.floor(fx),y=Math.floor(fy),u=fx-x,v=fy-y;
- return Math.max(0,THREE.MathUtils.lerp(THREE.MathUtils.lerp(heights[y*n+x],heights[y*n+x+1],u),THREE.MathUtils.lerp(heights[(y+1)*n+x],heights[(y+1)*n+x+1],u),v))*.0016;
+ return edgeFade(fx/(n-1),fy/(n-1))*Math.max(0,THREE.MathUtils.lerp(THREE.MathUtils.lerp(heights[y*n+x],heights[y*n+x+1],u),THREE.MathUtils.lerp(heights[(y+1)*n+x],heights[(y+1)*n+x+1],u),v))*.0016;
 }
 function point(lon,lat,offset=.06){const [x,z]=project(lon,lat);return new THREE.Vector3(x,height(lon,lat)+offset,z);}
 function addLabel(text,lon,lat,kind,stages,offset=.5){
@@ -50,7 +56,9 @@ function view(index,instant=false){
  const mobile=innerWidth<=700;
  scene.fog.density=mobile&&index===0?.0018:.004;
  let dest=new THREE.Vector3(...c.camera),target=new THREE.Vector3(...c.target);
- if(mobile){dest=new THREE.Vector3(...[[12,80,80],[12,43,49],[6,12,18]][index]);target=new THREE.Vector3(...[[0,0,4],[0,0,5],[1,0,5]][index]);}
+ if(mobile){dest=new THREE.Vector3(...[[12,80,80],[18.8,11,20.5],[6,12,18]][index]);target=new THREE.Vector3(...[[0,0,4],[-2.7,0,7.2],[1,0,5]][index]);}
+ // The valley view was framed in a very wide (≈3.7:1) frame; back the camera off along the same line in narrower frames.
+ if(index===1)dest.sub(target).multiplyScalar(THREE.MathUtils.clamp((3.7*camera.aspect**-1)**.45,1,1.8)).add(target);
  if(instant||reduced.matches){camera.position.copy(dest);controls.target.copy(target);transition=null;controls.update();}
  else transition={start:performance.now(),from:camera.position.clone(),to:dest,fromTarget:controls.target.clone(),toTarget:target};
 }
@@ -85,16 +93,21 @@ async function init(){
    return E;
  });
  for(let i=0;i<n*n;i++){
-   const h=heights[i],ocean=W+(i%n)/(n-1)*(E-W)>shore[Math.floor(i/n)];pos.setY(i,ocean?0:Math.max(h,0)*.0016);
+   const h=heights[i],ocean=W+(i%n)/(n-1)*(E-W)>shore[Math.floor(i/n)];pos.setY(i,ocean?0:Math.max(h,0)*.0016*edgeFade((i%n)/(n-1),Math.floor(i/n)/(n-1)));
    if(ocean)base.copy(sea);else base.copy(low).lerp(high,Math.min(Math.max(h,0)/1100,1));
    colors[i*3]=base.r;colors[i*3+1]=base.g;colors[i*3+2]=base.b;
  }
  geo.setAttribute('color',new THREE.BufferAttribute(colors,3));geo.computeVertexNormals();
  const mat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,metalness:0});
  mat.onBeforeCompile=shader=>{
-   shader.vertexShader='varying float vElevation;\n'+shader.vertexShader;
-   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvElevation = position.y;');
-   shader.fragmentShader='varying float vElevation;\n'+shader.fragmentShader;
+   shader.uniforms.surround={value:new THREE.Vector3(0xe9/255,0xed/255,0xe4/255)};
+   shader.vertexShader='varying float vElevation;\nvarying vec2 vEdgeUv;\n'+shader.vertexShader;
+   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvElevation = position.y;\nvEdgeUv = uv;');
+   shader.fragmentShader='varying float vElevation;\nvarying vec2 vEdgeUv;\nuniform vec3 surround;\n'+shader.fragmentShader;
+   // Blend to the page colour (sRGB, after colour-space conversion) so the DEM has no hard border.
+   shader.fragmentShader=shader.fragmentShader.replace('#include <fog_fragment>',`#include <fog_fragment>
+    float edgeDist = min(min(vEdgeUv.x, 1.0 - vEdgeUv.x), min(vEdgeUv.y, 1.0 - vEdgeUv.y));
+    gl_FragColor.rgb = mix(surround, gl_FragColor.rgb, smoothstep(0.0, ${EDGE.toFixed(2)}, edgeDist));`);
    shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
     float level = vElevation / 0.08;
     float edge = abs(fract(level - 0.5) - 0.5) / max(fwidth(level), 0.001);
@@ -102,21 +115,17 @@ async function init(){
     diffuseColor.rgb *= 1.0 - contour * 0.17 * smoothstep(0.06, 0.2, vElevation);`);
  };
  scene.add(new THREE.Mesh(geo,mat));
- // Vertical cut edges turn the terrain into a floating cartographic relief.
- const perimeter=[];for(let x=0;x<n;x++)perimeter.push(x);for(let y=1;y<n;y++)perimeter.push(y*n+n-1);for(let x=n-2;x>=0;x--)perimeter.push((n-1)*n+x);for(let y=n-2;y>=0;y--)perimeter.push(y*n);
- const sideVertices=[];for(let j=0;j<perimeter.length-1;j++){let a=perimeter[j],b=perimeter[j+1];let ax=pos.getX(a),az=pos.getZ(a),ay=pos.getY(a),bx=pos.getX(b),bz=pos.getZ(b),by=pos.getY(b);sideVertices.push(ax,ay,az,ax,-1.1,az,bx,by,bz,bx,by,bz,ax,-1.1,az,bx,-1.1,bz);}
- const sideGeo=new THREE.BufferGeometry();sideGeo.setAttribute('position',new THREE.Float32BufferAttribute(sideVertices,3));sideGeo.computeVertexNormals();scene.add(new THREE.Mesh(sideGeo,new THREE.MeshStandardMaterial({color:0x807962,side:THREE.DoubleSide,roughness:1})));
  // Official NSW watercourse linework, draped on the DEM; no flood surface.
  for(const feature of waterways){
   let sections=[],section=[];
   for(const [lon,lat] of feature.points){if(lon>=W&&lon<=E&&lat>=S&&lat<=N)section.push(point(lon,lat,feature.kind==='coast'?.025:.055));else if(section.length){sections.push(section);section=[];}}if(section.length)sections.push(section);
   for(const pts of sections){if(pts.length<2)continue;
    const primary=feature.name.toLowerCase()==='tweed river';
-   const material=new THREE.LineBasicMaterial({color:feature.kind==='coast'?0x6b9e94:primary?atlas.river:atlas.tributary,transparent:true,opacity:feature.kind==='coast'?.45:primary?.95:.5});
-   scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),material));
+   const material=new THREE.LineBasicMaterial({vertexColors:true,color:feature.kind==='coast'?0x6b9e94:primary?atlas.river:atlas.tributary,transparent:true,opacity:feature.kind==='coast'?.45:primary?.95:.5});
+   scene.add(new THREE.Line(edgeAlpha(new THREE.BufferGeometry().setFromPoints(pts)),material));
    if(primary){
     const curve=new THREE.CurvePath();for(let i=1;i<pts.length;i++)curve.add(new THREE.LineCurve3(pts[i-1],pts[i]));
-    const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.min(pts.length*2,1800),.055,5,false),new THREE.MeshBasicMaterial({color:atlas.river,transparent:true,opacity:.8}));scene.add(tube);riverMaterials.push(tube.material);
+    const tube=new THREE.Mesh(edgeAlpha(new THREE.TubeGeometry(curve,Math.min(pts.length*2,1800),.055,5,false)),new THREE.MeshBasicMaterial({color:atlas.river,vertexColors:true,transparent:true,opacity:.8}));scene.add(tube);riverMaterials.push(tube.material);
    }
   }
  }
@@ -167,7 +176,6 @@ async function init(){
 function showError(message){const loader=$('#loading');if(loader)loader.remove();const el=document.createElement('div');el.className='fallback';el.innerHTML=`<h2>The Tweed Valley</h2><p>Murwillumbah sits on the Tweed River in northern NSW. The ranges lie to the west; the river winds northeast to the sea. South Murwillumbah lies across the river from the town centre.</p><p>${message}</p><button class="next" onclick="location.reload()">Try again ↻</button>`;root.append(el);}
 $('#next').onclick=()=>view(Math.min(stage+1,2));
 document.querySelectorAll('.step').forEach(b=>b.onclick=()=>view(Number(b.dataset.step)));
-$('.wordmark').onclick=e=>{e.preventDefault();view(0);};
 $('#reset').onclick=()=>{view(stage);$('#drag-hint').textContent='Drag to orbit';};
 function updateMotion(){ $('#motion').textContent=paused?'Resume motion':'Pause motion';$('#motion').setAttribute('aria-label',paused?'Resume ambient motion':'Pause ambient motion');$('#motion').title=paused?'Resume ambient motion':'Pause ambient motion'; }
 $('#motion').onclick=()=>{paused=!paused;updateMotion();};updateMotion();
